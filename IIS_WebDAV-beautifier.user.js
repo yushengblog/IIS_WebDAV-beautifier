@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IIS 目录美化
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  现代网盘风格+传输计算
 // @author       misaka_10807
 // @match        *://192.168.123.4:8090/*
@@ -16,16 +16,14 @@
     'use strict';
 
     // ============================================================
-    // ⚙️ 可配置区（修改这里即可自定义你的界面）
+    // ⚙️ 可配置区
     // ============================================================
     const CONFIG = {
-        // ---------- 布局 ----------
         containerMaxWidth: '1500px',
         containerPadding: '20px',
         tableFontSize: '14px',
 
-        // ---------- 列宽（百分比） ----------
-        // ⭐ 列顺序：文件名 | 修改时间 | 大小 | 开始时间 | 完成时间 | 预计耗时 | 缓冲
+        // 列顺序：文件名 | 修改时间 | 大小 | 开始时间 | 完成时间 | 预计耗时 | 缓冲
         columnWidths: {
             name:      '30%',
             mtime:     '13%',
@@ -36,7 +34,6 @@
             buffer:    '3%'
         },
 
-        // ---------- 列最小宽度 ----------
         columnMinWidths: {
             name:      200,
             mtime:     160,
@@ -46,11 +43,9 @@
             duration:  110
         },
 
-        // ---------- 传输计算 ----------
         defaultSpeed: 100,
         defaultUnit: 'KB',
 
-        // ---------- 颜色 ----------
         colors: {
             link: '#007bff',
             mtime: '#6c757d',
@@ -62,12 +57,12 @@
             folderTag: '#adb5bd'
         },
 
-        // ---------- 修改时间列格式 ----------
         mtimeFontFamily: 'inherit',
-        mtimeFontSize: '14px'
+        mtimeFontSize: '14px',
+
+        // ⭐ 手机断点：屏幕宽度小于此值时切换为卡片布局
+        mobileBreakpoint: 768
     };
-    // ============================================================
-    // 可配置区结束，以下为脚本逻辑
     // ============================================================
 
     if (localStorage.getItem('iis_view_original') === 'true') {
@@ -92,32 +87,19 @@
 
     const ICON_MAP = {
         folder: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='folderG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23FFD766'/><stop offset='1' stop-color='%23FFB900'/></linearGradient></defs><path fill='url(%23folderG)' d='M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z'/><path fill='%23FFFFFF' opacity='0.25' d='M3 8h18v2H3z'/></svg>`,
-
         archive: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='z360' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23FFC107'/><stop offset='1' stop-color='%23F57C00'/></linearGradient></defs><rect x='4' y='3' width='16' height='18' rx='3' fill='url(%23z360)'/><rect x='11' y='3' width='2' height='18' fill='%23FFF' opacity='0.85'/><circle cx='12' cy='6' r='0.9' fill='%23F57C00'/><circle cx='12' cy='9' r='0.9' fill='%23F57C00'/><circle cx='12' cy='12' r='0.9' fill='%23F57C00'/><circle cx='12' cy='15' r='0.9' fill='%23F57C00'/><circle cx='12' cy='18' r='0.9' fill='%23F57C00'/><rect x='10' y='2' width='4' height='2' rx='1' fill='%23E65100'/></svg>`,
-
         image: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='imgG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%2366BB6A'/><stop offset='1' stop-color='%232E7D32'/></linearGradient></defs><rect x='3' y='4' width='18' height='16' rx='2' fill='url(%23imgG)'/><circle cx='8.5' cy='9' r='1.8' fill='%23FFF' opacity='0.95'/><path fill='%23FFF' opacity='0.85' d='M4 17l4.5-5 3 3 4-4.5L20 17z'/></svg>`,
-
         video: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='vidG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23BA68C8'/><stop offset='1' stop-color='%236A1B9A'/></linearGradient></defs><rect x='2' y='5' width='20' height='14' rx='2' fill='url(%23vidG)'/><path fill='%23FFF' d='M10 9l6 3.5-6 3.5z'/></svg>`,
-
         audio: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='audG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23F06292'/><stop offset='1' stop-color='%23AD1457'/></linearGradient></defs><rect x='3' y='4' width='18' height='16' rx='2' fill='url(%23audG)'/><path fill='%23FFF' d='M15 6v8.5a2 2 0 1 1-1-1.73V8l-4 1v6.5a2 2 0 1 1-1-1.73V9l6-1.5z'/></svg>`,
-
         pdf: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='pdfG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23EF5350'/><stop offset='1' stop-color='%23B71C1C'/></linearGradient></defs><path fill='url(%23pdfG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><text x='12' y='17.5' font-family='Arial,sans-serif' font-size='5.5' font-weight='bold' fill='%23FFF' text-anchor='middle'>PDF</text></svg>`,
-
         word: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='wdG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%2342A5F5'/><stop offset='1' stop-color='%230D47A1'/></linearGradient></defs><path fill='url(%23wdG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><text x='12' y='17.5' font-family='Arial,sans-serif' font-size='7' font-weight='bold' fill='%23FFF' text-anchor='middle'>W</text></svg>`,
-
         excel: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='xlG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%2366BB6A'/><stop offset='1' stop-color='%231B5E20'/></linearGradient></defs><path fill='url(%23xlG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><text x='12' y='17.5' font-family='Arial,sans-serif' font-size='7' font-weight='bold' fill='%23FFF' text-anchor='middle'>X</text></svg>`,
-
         ppt: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='pptG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23FF8A65'/><stop offset='1' stop-color='%23BF360C'/></linearGradient></defs><path fill='url(%23pptG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><text x='12' y='17.5' font-family='Arial,sans-serif' font-size='7' font-weight='bold' fill='%23FFF' text-anchor='middle'>P</text></svg>`,
-
         text: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='txtG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%2378909C'/><stop offset='1' stop-color='%2337474F'/></linearGradient></defs><path fill='url(%23txtG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><path stroke='%23FFF' stroke-width='1.2' stroke-linecap='round' d='M8 12h8M8 15h8M8 18h5' fill='none'/></svg>`,
-
         code: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='codeG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23BA68C8'/><stop offset='1' stop-color='%234A148C'/></linearGradient></defs><path fill='url(%23codeG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><path fill='none' stroke='%23FFF' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' d='M10 12l-2.5 3L10 18M14 12l2.5 3L14 18'/></svg>`,
-
         font: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='fntG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23A1887F'/><stop offset='1' stop-color='%233E2723'/></linearGradient></defs><path fill='url(%23fntG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/><text x='12' y='17.5' font-family='Georgia,serif' font-size='8' font-weight='bold' fill='%23FFF' text-anchor='middle'>A</text></svg>`,
-
         database: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='dbG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%234DD0E1'/><stop offset='1' stop-color='%23006064'/></linearGradient></defs><ellipse cx='12' cy='6' rx='8' ry='3' fill='url(%23dbG)'/><path fill='url(%23dbG)' d='M4 6v12c0 1.66 3.58 3 8 3s8-1.34 8-3V6'/><ellipse cx='12' cy='10' rx='8' ry='3' fill='%23FFF' opacity='0.15'/><ellipse cx='12' cy='14' rx='8' ry='3' fill='%23FFF' opacity='0.1'/></svg>`,
-
-        file: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='fileG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23BDBDBD'/><stop offset='1' stop-color='%23424242'/></linearGradient></defs><path fill='url(%23fileG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/></svg>`,
+        file: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='fileG' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23BDBDBD'/><stop offset='1' stop-color='%23424242'/></linearGradient></defs><path fill='url(%23fileG)' d='${DOC_PATH}'/><path fill='%23FFF' opacity='0.35' d='${DOC_FOLD}'/></svg>`
     };
 
     function getFileIconType(filename, isDir) {
@@ -165,7 +147,6 @@
             flex-shrink: 0;
         }
 
-        /* ⭐ 修改时间列 */
         .iis-file-table .iis-mtime-text {
             color: ${CONFIG.colors.mtime};
             font-size: ${CONFIG.mtimeFontSize};
@@ -257,6 +238,135 @@
         html.dark-mode #iis-toolbar button svg path { stroke: #e0e0e0 !important; }
         html.dark-mode .iis-btn-parent svg path { stroke: #FFC107 !important; }
         html.dark-mode .iis-btn-parent svg path[fill="#F2A900"] { fill: #FFC107 !important; }
+
+        /* ============================================================ */
+        /* ⭐ 手机自适应（屏幕宽度 <= 768px 时启用卡片布局）             */
+        /* ============================================================ */
+        @media (max-width: ${CONFIG.mobileBreakpoint}px) {
+            /* 主容器 */
+            #iis-wrapper {
+                padding: 10px !important;
+                max-width: 100% !important;
+            }
+
+            /* 面包屑 */
+            .iis-breadcrumb {
+                gap: 4px !important;
+                margin-bottom: 10px !important;
+                font-size: 14px !important;
+            }
+            .iis-breadcrumb a { font-size: 16px !important; }
+            .iis-breadcrumb .bc-current { font-size: 16px !important; }
+
+            /* 工具栏：纵向堆叠 */
+            #iis-toolbar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 8px !important;
+                padding: 10px 12px !important;
+                margin-bottom: 12px !important;
+            }
+            #iis-toolbar > div {
+                justify-content: flex-start !important;
+                flex-wrap: wrap !important;
+                gap: 6px !important;
+            }
+            #iis-toolbar strong { font-size: 12px !important; margin-left: 0 !important; }
+            #iis-toolbar button { font-size: 12px !important; padding: 5px 10px !important; }
+            #iis-toolbar a { font-size: 12px !important; padding: 5px 10px 5px 8px !important; }
+
+            /* 表格变卡片：隐藏表头 */
+            .iis-file-table thead { display: none; }
+            .iis-file-table,
+            .iis-file-table tbody,
+            .iis-file-table tr,
+            .iis-file-table td {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .iis-file-table colgroup { display: none; }
+
+            /* 每行变卡片 */
+            .iis-file-table tr {
+                background: #fff;
+                border-radius: 10px;
+                margin-bottom: 10px;
+                padding: 12px 14px;
+                border: 1px solid #eee;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+                transition: box-shadow 0.15s;
+            }
+            .iis-file-table tr:hover td { background: transparent !important; }
+
+            /* 单元格：横向排列（标签左，值右） */
+            .iis-file-table td {
+                border: none;
+                padding: 5px 0;
+                text-align: left !important;
+                overflow: visible;
+                white-space: normal;
+                text-overflow: clip;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+                color: #555;
+            }
+
+            /* 第一列（文件名）：独占一行，稍大 */
+            .iis-file-table td:first-child {
+                display: block;
+                padding: 0 0 8px 0;
+                margin-bottom: 6px;
+                border-bottom: 1px dashed #e9ecef;
+                font-size: 15px;
+            }
+
+            /* 各字段的标签 */
+            .iis-file-table td:nth-child(2)::before { content: '修改时间'; color: #999; font-size: 12px; flex-shrink: 0; margin-right: 10px; }
+            .iis-file-table td:nth-child(3)::before { content: '大小'; color: #999; font-size: 12px; flex-shrink: 0; margin-right: 10px; }
+            .iis-file-table td:nth-child(4)::before { content: '开始时间'; color: #999; font-size: 12px; flex-shrink: 0; margin-right: 10px; }
+            .iis-file-table td:nth-child(5)::before { content: '完成时间'; color: #999; font-size: 12px; flex-shrink: 0; margin-right: 10px; }
+            .iis-file-table td:nth-child(6)::before { content: '预计耗时'; color: #999; font-size: 12px; flex-shrink: 0; margin-right: 10px; }
+
+            /* 隐藏缓冲列 */
+            .iis-file-table td:last-child { display: none; }
+
+            /* 时间输入控件 */
+            .iis-file-table input[type="time"] {
+                width: 100px;
+                height: 26px;
+                font-size: 12px;
+                padding: 2px 2px 2px 6px;
+            }
+
+            /* 手机上禁用拖拽调整 */
+            .iis-resizer { display: none !important; }
+
+            /* 深色模式适配卡片 */
+            html.dark-mode .iis-file-table tr {
+                background: #1e1e1e !important;
+                border-color: #333 !important;
+            }
+            html.dark-mode .iis-file-table td:first-child {
+                border-bottom-color: #333 !important;
+            }
+            html.dark-mode .iis-file-table td {
+                color: #ccc !important;
+            }
+            html.dark-mode .iis-file-table td::before {
+                color: #777 !important;
+            }
+        }
+
+        /* 超小屏（<= 380px）进一步压缩 */
+        @media (max-width: 380px) {
+            .iis-file-table td { font-size: 12px; }
+            .iis-file-table td:first-child { font-size: 14px; }
+            .iis-file-table input[type="time"] { width: 88px; font-size: 11px; }
+            #iis-toolbar button { font-size: 11px !important; padding: 4px 8px !important; }
+        }
     `;
     document.documentElement.appendChild(globalStyle);
 
@@ -277,7 +387,6 @@
         return bytes + ' B';
     }
 
-    // ⭐ 预计耗时：中文的"X时X分X秒"格式
     function formatDuration(totalSeconds) {
         if (!totalSeconds || totalSeconds === Infinity) return '--';
         let h = Math.floor(totalSeconds / 3600);
@@ -343,6 +452,9 @@
     }
 
     function makeResizable(table) {
+        // ⭐ 手机上禁用拖拽调整
+        if (window.innerWidth <= CONFIG.mobileBreakpoint) return;
+
         let cols = table.querySelectorAll('col');
         let ths = table.querySelectorAll('th');
         let storageKey = 'iis-table-widths-' + window.location.pathname;
@@ -468,7 +580,6 @@
 
             let mtimeHtml = file.dateTimeStr ? `<span class="iis-mtime-text">${file.dateTimeStr}</span>` : '<span class="iis-mtime-text">--</span>';
 
-            // ⭐ 列顺序：文件名 | 修改时间 | 大小 | 开始时间 | 完成时间 | 预计耗时
             let tr = document.createElement('tr');
             tr.innerHTML = `
                 <td style="text-align: left;">
@@ -586,7 +697,6 @@
                 return sortState.asc ? valA - valB : valB - valA;
             });
 
-            // ⭐ 排序指示器 keys 顺序：name, mtime, bytes, startTime, endTime, duration
             document.querySelectorAll('.iis-file-table th').forEach((th, i) => {
                 let indicator = th.querySelector('.sort-indicator');
                 if (indicator) indicator.remove();
@@ -644,7 +754,6 @@
             </div>
         `;
 
-        // ⭐ 列顺序：文件名 | 修改时间 | 大小 | 开始时间 | 完成时间 | 预计耗时
         let tableHTML = `
             <div class="iis-table-wrapper">
                 <table class="iis-file-table">
