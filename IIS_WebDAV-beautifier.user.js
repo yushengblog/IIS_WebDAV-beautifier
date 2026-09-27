@@ -2,7 +2,7 @@
 // @name         IIS 目录美化
 // @namespace    http://tampermonkey.net/
 // @version      1.0
-// @description  现代网盘风格+传输计算（交换耗时/完成列，耗时恢复中文）
+// @description  现代网盘风格+传输计算
 // @author       misaka_10807
 // @match        *://192.168.123.4:8090/*
 // @match        *://172.22.123.4:8090/*
